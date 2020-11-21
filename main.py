@@ -60,12 +60,12 @@ def crop_detection(frame, video_W, video_H, left_x, top_y, right_x, bottom_y):
     return crop
 
 
-def send_to_api(image, crop, og_img_num, monitor_name):
+def send_to_api(image, crop, og_img_num, device_name):
     packet = {
         "requestNumber": 00,
         "companyCode": 4,
         "dispositiveType": 2,
-        "captureDeviceCode": monitor_name,
+        "captureDeviceCode": device_name,
         "appCode": 7,
         "latitude": "null",
         "longitude": "null",
@@ -88,6 +88,7 @@ if __name__ == '__main__':
         path = path + '/'
     MOVE = config['Default'].getboolean('move')
     OPTION = config['Default'].getint('option')
+    device_name = config['Default']['device_name']
 
     if OPTION == 1 or OPTION == 3:
         # Instantiate detector
@@ -118,7 +119,7 @@ if __name__ == '__main__':
 
                 # [3] Extrair faces e importar para o atento
                 if OPTION == 3:
-                    send_to_api(image, crop, new_image_num)
+                    send_to_api(image, crop, new_image_num, device_name=device_name)
 
                 # [1] Extrair faces e armazenar em disco
                 else:
@@ -143,7 +144,7 @@ if __name__ == '__main__':
             if crop is None:
                 print("face image {} not found".format(crop_name))
             # If we found both images, send them to atento
-            send_to_api(original_image, crop, from_image[5:])
+            send_to_api(original_image, crop, from_image[5:], device_name=device_name)
     else:
         print("Options must be 1, 2 or 3.")
         exit(0)
