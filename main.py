@@ -38,7 +38,10 @@ def send_packet(packet):
             print("ATENTO error 404, not found")
             exit(1)
         else:
-            print("ATENTO message: {}".format(response.json()["message"].encode('utf8')))
+            try:
+                print("ATENTO message: {}".format(response.json()["message"].encode('utf8')))
+            except json.JSONDecodeError:
+                print("json Decode Error")
 
 
 def crop_detection(frame, video_W, video_H, left_x, top_y, right_x, bottom_y):
