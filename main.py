@@ -90,6 +90,13 @@ if __name__ == '__main__':
     OPTION = config['Default'].getint('option')
     device_name = config['Default']['device_name']
 
+    try:
+        arquivo = open("total_faces.txt", 'r')
+        num_faces = int(arquivo.readline())
+    except OSError:
+        num_faces = 0
+    except ValueError:
+        num_faces = 0
     if OPTION == 1 or OPTION == 3:
         # Instantiate detector
         detector = FaceboxesTensorflow(model_path=config['Detector']['weights'],
@@ -102,6 +109,7 @@ if __name__ == '__main__':
 
         total_imgs = len(all_image_paths)
         for i in range(total_imgs):
+
             # Get image original path
             image_og_path = all_image_paths.pop(0)
             # Move and rename this file
@@ -112,7 +120,7 @@ if __name__ == '__main__':
             image = cv2.imread(new_image_path)
             boxes, _ = detector.detect(image)
             img_h, img_w, _ = image.shape
-
+            num_faces += len(boxes)
             for num, box in enumerate(boxes):
                 crop = crop_detection(image, img_w, img_h, box[0], box[1], box[2], box[3])
                 crop_name = 'face{}'.format(str(num).zfill(3))
@@ -124,7 +132,13 @@ if __name__ == '__main__':
                 # [1] Extrair faces e armazenar em disco
                 else:
                     cv2.imwrite('faces_out/image{}-{}.jpg'.format(new_image_num, crop_name), crop)
-            print("\rProcessed: {}/{}".format(i, total_imgs), end='', flush=True)
+
+            print("Processed images: {}/{}".format(i, total_imgs))
+            print("Faces: {}".format(num_faces))
+            if num_faces > 400000:
+                break
+        arquivo = open("total_faces.txt", "w")
+        arquivo.write(str(num_faces))
 
     elif OPTION == 2:
         all_image_paths = []
