@@ -163,7 +163,7 @@ if __name__ == '__main__':
 
                 # [3] Extrair faces e importar para o atento
                 if config["option"] == 3:
-                    call_funcao_07(image, crop, new_image_num, device_name=config["device_name"])
+                    call_funcao_07(image, crop, new_image_num, device_name=config["device"])
 
                 # [1] Extrair faces e armazenar em disco
                 else:
@@ -194,7 +194,7 @@ if __name__ == '__main__':
             if crop is None:
                 print("face image {} not found".format(crop_name))
             # If we found both images, send them to atento
-            call_funcao_07(original_image, crop, from_image[5:], device_name=config["device_name"])
+            call_funcao_07(original_image, crop, from_image[5:], device_name=config["device"])
 
     elif config["option"] == 4:
         all_image_paths = get_all_image_paths(config["path"])
