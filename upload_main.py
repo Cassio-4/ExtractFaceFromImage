@@ -82,9 +82,8 @@ def call_funcao_07(image, crop, og_img_num, device_name):
 def call_funcao_02(image, image_name, device_name):
     packet = {
         "companyCode": 4,
-        "captureDeviceCode": device_name,
-        "appCode": 7,
-        "requestNumber": 00,
+        "captureDeviceCode": 109,
+        "appCode": 2,
         "truePictureTree": 99,
         "keyPerson": image_name,
         "validatePictureTree": 99,
@@ -92,7 +91,6 @@ def call_funcao_02(image, image_name, device_name):
         "latitude": "null",
         "longitude": "null"
     }
-    pass
     send_packet(packet)
 
 
