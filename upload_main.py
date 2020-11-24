@@ -37,6 +37,8 @@ def send_packet(packet):
         if response.status_code == 404:
             print("ATENTO error 404, not found")
             exit(1)
+        else:
+            print("ATENTO: status[{}]".format(int(response.json()["status"])))
 
 
 def crop_detection(frame, video_W, video_H, left_x, top_y, right_x, bottom_y):
