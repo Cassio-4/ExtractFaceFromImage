@@ -1,12 +1,12 @@
 from detector.faceboxes import FaceboxesTensorflow
+from requests import Timeout
 import configparser
 import requests
 import base64
+import json
 import glob
 import cv2
 import os
-from requests import Timeout
-import json
 
 
 def encode_image_base64(image, img_num):
@@ -58,7 +58,7 @@ def crop_detection(frame, video_W, video_H, left_x, top_y, right_x, bottom_y):
     return crop
 
 
-def send_to_api(image, crop, og_img_num, device_name):
+def call_funcao_07(image, crop, og_img_num, device_name):
     packet = {
         "requestNumber": 00,
         "companyCode": 4,
@@ -77,16 +77,41 @@ def send_to_api(image, crop, og_img_num, device_name):
     send_packet(packet)
 
 
-if __name__ == '__main__':
+def call_funcao_02(image, image_name, device_name):
+    packet = {
+        "companyCode": 4,
+        "captureDeviceCode": device_name,
+        "appCode": 7,
+        "requestNumber": 00,
+        "truePictureTree": 99,
+        "keyPerson": image_name,
+        "validatePictureTree": 99,
+        "imageValidate": encode_image_base64(image, image_name),
+        "latitude": "null",
+        "longitude": "null"
+    }
+    pass
+    send_packet(packet)
+
+
+def parse_config():
     config = configparser.ConfigParser()
     config.read("config.ini")
 
     path = config['Default']['path_directory']
     if not path.endswith('/'):
         path = path + '/'
-    MOVE = config['Default'].getboolean('move')
-    OPTION = config['Default'].getint('option')
-    device_name = config['Default']['device_name']
+    move = config['Default'].getboolean('move')
+    option = config['Default'].getint('option')
+    device = config['Default']['device_name']
+    config_dict = {
+        "path": path,
+        "move": move,
+        "option": option,
+        "device": device,
+        "weights_path": config['Detector']['weights'],
+        "score_threshold": config['Detector'].getfloat('score_threshold')
+    }
 
     try:
         arquivo = open("total_faces.txt", 'r')
@@ -95,19 +120,32 @@ if __name__ == '__main__':
         num_faces = 0
     except ValueError:
         num_faces = 0
-    if OPTION == 1 or OPTION == 3:
+
+    config_dict["num_faces"] = num_faces
+
+    return config_dict
+
+
+def get_all_image_paths(path):
+    all_image_paths = []
+    for r, d, f in os.walk(path):
+        for file in f:
+            if file.endswith(".jpg"):
+                all_image_paths.append(os.path.join(r, file))
+    return all_image_paths
+
+
+if __name__ == '__main__':
+    config = parse_config()
+
+    if config["option"] == 1 or config["option"] == 3:
         # Instantiate detector
-        detector = FaceboxesTensorflow(model_path=config['Detector']['weights'],
-                                       score_threshold=config['Detector'].getfloat('score_threshold'))
-        all_image_paths = []
-        for r, d, f in os.walk(path):
-            for file in f:
-                if file.endswith(".jpg"):
-                    all_image_paths.append(os.path.join(r, file))
-
+        detector = FaceboxesTensorflow(model_path=config["weights_path"],
+                                       score_threshold=config["score_threshold"])
+        all_image_paths = get_all_image_paths(config["path"])
         total_imgs = len(all_image_paths)
-        for i in range(total_imgs):
 
+        for i in range(total_imgs):
             # Get image original path
             image_og_path = all_image_paths.pop(0)
             # Move and rename this file
@@ -118,27 +156,27 @@ if __name__ == '__main__':
             image = cv2.imread(new_image_path)
             boxes, _ = detector.detect(image)
             img_h, img_w, _ = image.shape
-            num_faces += len(boxes)
+            config["num_faces"] += len(boxes)
             for num, box in enumerate(boxes):
                 crop = crop_detection(image, img_w, img_h, box[0], box[1], box[2], box[3])
                 crop_name = 'face{}'.format(str(num).zfill(3))
 
                 # [3] Extrair faces e importar para o atento
-                if OPTION == 3:
-                    send_to_api(image, crop, new_image_num, device_name=device_name)
+                if config["option"] == 3:
+                    call_funcao_07(image, crop, new_image_num, device_name=config["device_name"])
 
                 # [1] Extrair faces e armazenar em disco
                 else:
                     cv2.imwrite('faces_out/image{}-{}.jpg'.format(new_image_num, crop_name), crop)
 
             print("Processed images: {}/{}".format(i, total_imgs))
-            print("Faces: {}".format(num_faces))
-            if num_faces > 400000:
+            print("Faces: {}".format(config["num_faces"]))
+            if config["num_faces"] > 400000:
                 break
-        arquivo = open("total_faces.txt", "w")
-        arquivo.write(str(num_faces))
+        with open("total_faces.txt", "w") as arquivo:
+            arquivo.write(str(config["num_faces"]))
 
-    elif OPTION == 2:
+    elif config["option"] == 2:
         all_image_paths = []
         for filename in glob.glob(os.path.join("faces_out/", '*.jpg')):
             all_image_paths.append(filename)
@@ -156,7 +194,24 @@ if __name__ == '__main__':
             if crop is None:
                 print("face image {} not found".format(crop_name))
             # If we found both images, send them to atento
-            send_to_api(original_image, crop, from_image[5:], device_name=device_name)
+            call_funcao_07(original_image, crop, from_image[5:], device_name=config["device_name"])
+
+    elif config["option"] == 4:
+        all_image_paths = get_all_image_paths(config["path"])
+        total_imgs = len(all_image_paths)
+
+        for i in range(total_imgs):
+            image_og_path = all_image_paths.pop(0)
+            image_name = image_og_path.split('/')[-1]
+            new_image_path = 'funcao_02/{}'.format(image_name)
+            # read image
+            image = cv2.imread(image_og_path)
+            # call fun 02
+            call_funcao_02(image, image_name, config["device"])
+            # Once we're done with this image, move it
+            os.rename(image_og_path, new_image_path)
+            # Update status
+            print("Image: {}. Total:{}/{}.".format(image_name, i, total_imgs))
     else:
-        print("Options must be 1, 2 or 3.")
+        print("Options must be 1, 2, 3 or 4.")
         exit(0)
